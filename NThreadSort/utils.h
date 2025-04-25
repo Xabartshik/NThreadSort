@@ -2,6 +2,7 @@
 #include <thread>
 #include <algorithm>
 #include <cstring>
+#include <cassert>
 
 // Функция для сортировки части массива
 void sort_part(std::vector<int>& arr, int start, int end) {
@@ -70,4 +71,64 @@ void parallel_sort(std::vector<int>& arr, int num_threads) {
             }
         }
     }
+}
+
+void test_parallel_sort() {
+    // Тест 1: Пустой массив
+    {
+        std::vector<int> empty;
+        parallel_sort(empty, 4);
+        assert(empty.empty());
+    }
+
+    // Тест 2: Массив из одного элемента
+    {
+        std::vector<int> single = { 42 };
+        parallel_sort(single, 4);
+        assert(single.size() == 1 && single[0] == 42);
+    }
+
+    // Тест 3: Уже отсортированный массив
+    {
+        std::vector<int> sorted = { 1, 2, 3, 4, 5 };
+        auto sorted_copy = sorted;
+        parallel_sort(sorted, 2);
+        assert(sorted == sorted_copy);
+    }
+
+    // Тест 4: Обратно отсортированный массив
+    {
+        std::vector<int> reversed = { 5, 4, 3, 2, 1 };
+        parallel_sort(reversed, 2);
+        assert(std::is_sorted(reversed.begin(), reversed.end()));
+    }
+
+    // Тест 5: Случайный массив (маленький)
+    {
+        std::vector<int> small = { 3, 1, 4, 1, 5, 9, 2, 6 };
+        auto small_expected = small;
+        parallel_sort(small, 2);
+        std::sort(small_expected.begin(), small_expected.end());
+        assert(small == small_expected);
+    }
+
+    // Тест 6: Случайный массив (большой)
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(1, 10000);
+
+        std::vector<int> large(10000);
+        for (auto& num : large) {
+            num = dis(gen);
+        }
+
+        auto large_expected = large;
+        parallel_sort(large, 4);
+        std::sort(large_expected.begin(), large_expected.end());
+        assert(large == large_expected);
+    }
+
+
+    std::cout << "Все тесты пройдены успешно!\n";
 }

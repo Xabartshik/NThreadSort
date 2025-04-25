@@ -7,7 +7,7 @@
 #include <chrono>
 #include "utils.h"
 using namespace std;
-
+using namespace std::chrono;
 /*
 Введите количество потоков: 8
 Введите размер массива: 10000000
@@ -48,37 +48,84 @@ void find_first_unsorted(const std::vector<int>& vec) {
 }
 
 int main() {
+    test_parallel_sort();
+
     int numThreads = 8, dataSize;
+    vector<int> dataSizes = { 2000000, 4000000, 6000000, 8000000, 10000000, 12000000, 14000000, 16000000, 18000000, 20000000 };
 
-    cout << "Введите количество потоков: ";
-    cin >> numThreads;
 
-    cout << "Введите размер массива: ";
-    cin >> dataSize;
 
+
+    vector<long long> parallelTimes;
+    vector<long long> sequentialTimes;
 
     random_device rd;
     mt19937 gen(rd());
-    uniform_int_distribution<> distrib(1, dataSize-1); // Генерируем числа от 1 до 1000 (равномерное распределение)
 
-    vector<int> data(dataSize);
-    for (int i = 0; i < dataSize; ++i) {
-        data[i] = distrib(gen);
+    for (int size : dataSizes) {
+        cout << "\nТестируем размер массива: " << size << endl;
+
+        // Генерация случайного массива
+        uniform_int_distribution<> distrib(1, size - 1);
+        vector<int> data(size);
+        for (int i = 0; i < size; ++i) {
+            data[i] = distrib(gen);
+        }
+
+        // Копии для тестов
+        vector<int> dataForParallel = data;
+        vector<int> dataForSequential = data;
+
+        // Параллельная сортировка
+        auto start = high_resolution_clock::now();
+        parallel_sort(dataForParallel, numThreads);
+        auto end = high_resolution_clock::now();
+        auto parallelDuration = duration_cast<milliseconds>(end - start);
+        parallelTimes.push_back(parallelDuration.count());
+
+        bool parallelSorted = is_sorted(dataForParallel.begin(), dataForParallel.end());
+
+        // Последовательная сортировка
+        start = high_resolution_clock::now();
+        sort(dataForSequential.begin(), dataForSequential.end());
+        end = high_resolution_clock::now();
+        auto sequentialDuration = duration_cast<milliseconds>(end - start);
+        sequentialTimes.push_back(sequentialDuration.count());
+
+        bool sequentialSorted = is_sorted(dataForSequential.begin(), dataForSequential.end());
+
+        // Вывод результатов
+        cout << "Параллельная сортировка (" << numThreads << " потоков): "
+            << parallelDuration.count() << " мс, корректность: "
+            << (parallelSorted ? "да" : "нет") << endl;
+
+        cout << "Последовательная сортировка: "
+            << sequentialDuration.count() << " мс, корректность: "
+            << (sequentialSorted ? "да" : "нет") << endl;
+
+        if (!parallelSorted) find_first_unsorted(dataForParallel);
     }
 
+    // Вывод результатов
+    cout << "\nИтоговые результаты:" << endl;
+    cout << "Размеры массивов: [";
+    for (int size : dataSizes) cout << size << (size != dataSizes.back() ? ", " : "");
+    cout << "]" << endl;
 
-    auto start = chrono::high_resolution_clock::now();
-    parallel_sort(data, numThreads);
-    auto end = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+    cout << "Время параллельной сортировки (мс): [";
+    for (long long time : parallelTimes) cout << time << (time != parallelTimes.back() ? ", " : "");
+    cout << "]" << endl;
 
-    cout << "Время сортировки: " << duration.count() << " мс" << endl;
+    cout << "Время последовательной сортировки (мс): [";
+    for (long long time : sequentialTimes) cout << time << (time != sequentialTimes.back() ? ", " : "");
+    cout << "]" << endl;
 
-    find_first_unsorted(data);
-
-    // Вывод отсортированного массива (для проверки)
-    cout << is_sorted(data.cbegin(), data.cend()) << " ";
-    cout << endl;
+    cout << "Ускорение (послед./паралл.): [";
+    for (size_t i = 0; i < dataSizes.size(); ++i) {
+        double speedup = static_cast<double>(sequentialTimes[i]) / parallelTimes[i];
+        cout << speedup << (i != dataSizes.size() - 1 ? ", " : "");
+    }
+    cout << "]" << endl;
 
     return 0;
 }
